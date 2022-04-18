@@ -6,8 +6,8 @@ import threading
 import time
 
 # Server bits
-host_addr = "127.0.0.1"
-port = 12235
+host_addr = "attu4.cs.washington.edu"
+port = 13335
 buffer_size = 1024
 
 # Hard-coded values
@@ -181,7 +181,6 @@ def main():
     udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_sock.bind((host_addr, port))
 
-    mthreads = []
     try:
         while True:
             # We want to only start the thread if we receive anything
@@ -189,7 +188,6 @@ def main():
             # We don't want to check these two fields to prevent DDOS attack
             data = data_addr_pair[0]
             cli_addr = data_addr_pair[1]
-
             # Check if empty
             if not data:
                 udp_sock.close()
@@ -207,12 +205,9 @@ def main():
             if payload == tsx_payload:
                 # Basic thread management
                 print(f"{threading.active_count()}")
-                while threading.active_count() >= max_users:
-                    time.sleep(5)
 
-                t = threading.Thread(target=run(udp_sock, payload_len, psecret, cli_addr))
+                t = threading.Thread(target=run, args=(udp_sock, payload_len, psecret, cli_addr))
                 t.start()
-                mthreads.append(t)
             else:
                 udp_sock.close()
                 return
@@ -220,8 +215,6 @@ def main():
     except KeyboardInterrupt:
         print("Ctrl+C by host")
     finally:
-        for t in mthreads:
-            t.join()
         udp_sock.close()
 
 
