@@ -156,21 +156,8 @@ def cd_stage(tcp_port, bsecret):
     return 1
 
 
-def run(udp_socket, data, cli_addr):
-    # We need to encode hello world with terminator
-    tsx_keyword = 'hello world' + '\0'
-    tsx_payload = tsx_keyword.encode('utf-8')
-
-    # Check if empty
-    if not data:
-        return
-
-    # Check if we have the hello world payload to start tsx
-    payload_len, psecret, step, inc_sid = struct.unpack('!IIHH', data[:header_size])
-    # We want to use 12+payload_len to prevent extraneous bytes
-    payload = data[header_size:header_size+payload_len]
-
-    if psecret == tsx_secret and payload == tsx_payload:
+def run(udp_socket, payload_len, psecret, cli_addr):
+    if psecret == tsx_secret:
         a_info = a_stage(udp_socket, cli_addr, payload_len, psecret)
         if a_info is None:
             print("Failed Stage A")
@@ -202,14 +189,34 @@ def main():
             # We don't want to check these two fields to prevent DDOS attack
             data = data_addr_pair[0]
             cli_addr = data_addr_pair[1]
-            # Basic thread management
-            print(f"{threading.active_count()}")
-            while threading.active_count() >= max_users:
-                time.sleep(5)
 
-            t = threading.Thread(target=run(udp_sock, data, cli_addr))
-            t.start()
-            mthreads.append(t)
+            # Check if empty
+            if not data:
+                udp_sock.close()
+                return
+
+            # We need to encode hello world with terminator
+            tsx_keyword = 'hello world' + '\0'
+            tsx_payload = tsx_keyword.encode('utf-8')
+
+            # Check if we have the hello world payload to start tsx
+            payload_len, psecret, step, inc_sid = struct.unpack('!IIHH', data[:header_size])
+            # We want to use 12+payload_len to prevent extraneous bytes
+            payload = data[header_size:header_size + payload_len]
+
+            if payload == tsx_payload:
+                # Basic thread management
+                print(f"{threading.active_count()}")
+                while threading.active_count() >= max_users:
+                    time.sleep(5)
+
+                t = threading.Thread(target=run(udp_sock, payload_len, psecret, cli_addr))
+                t.start()
+                mthreads.append(t)
+            else:
+                udp_sock.close()
+                return
+
     except KeyboardInterrupt:
         print("Ctrl+C by host")
     finally:
