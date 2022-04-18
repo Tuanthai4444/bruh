@@ -63,10 +63,10 @@ def b_stage(udp_port, ln, num, psecret, cli_addr):
 
         # +4 bytes for the new pid (int)
         b_ln, b_psecret, b_step, b_sid, b_pid = \
-            struct.unpack('!IIHHI', data_packet[:header_size+4])
+            struct.unpack('!IIHHI', data_packet[:header_size+byte_align])
 
         # Do verifications, if we have num = 6 then we want max ACK 5
-        if b_ln != ln+4 or b_pid != count or b_psecret != psecret:
+        if b_ln != ln+byte_align or b_pid != count or b_psecret != psecret:
             return None
 
         # ACK packet
@@ -166,9 +166,9 @@ def run(udp_socket, data, cli_addr):
         return
 
     # Check if we have the hello world payload to start tsx
-    payload_len, psecret, step, inc_sid = struct.unpack('!IIHH', data[:12])
+    payload_len, psecret, step, inc_sid = struct.unpack('!IIHH', data[:header_size])
     # We want to use 12+payload_len to prevent extraneous bytes
-    payload = data[12:12+payload_len]
+    payload = data[header_size:header_size+payload_len]
 
     if psecret == tsx_secret and payload == tsx_payload:
         a_info = a_stage(udp_socket, cli_addr, payload_len, psecret)
